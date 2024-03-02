@@ -13,14 +13,6 @@ class User(AbstractUser):
     can_be_contacted = models.BooleanField()
     can_data_be_shared = models.BooleanField()
 
-
-class Contributor(models.Model):
-    created_time = models.DateTimeField(auto_now_add=True)
-    user = models.ForeignKey(
-        to=settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE
-    )
-
 class Project(models.Model):
 
     BACK_END = "BACK_END"
@@ -37,9 +29,10 @@ class Project(models.Model):
     created_time = models.DateTimeField(auto_now_add=True)
     author = models.ForeignKey(
         to=settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        related_name='created_projects'
     )
-    contributors = models.ManyToManyField(Contributor)
+    contributors = models.ManyToManyField(User, related_name='projects')
     name = models.CharField(max_length=128)
     description = models.TextField(max_length=2048)
     type = models.CharField(max_length=30, choices=TYPE_CHOICES)
@@ -77,7 +70,21 @@ class Issue(models.Model):
     )
 
     created_time = models.DateTimeField(auto_now_add=True)
-    author = models.ForeignKey(Contributor,on_delete=models.CASCADE)
+    # Créateur
+    author = models.ForeignKey(
+        to=settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="created_issues",
+        null=True
+    )
+    # Contributeur à qui est assigné l'issue
+    contributor = models.ForeignKey(
+        to=settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="attributed_issues",
+        null=True,
+        #blank=True
+    )
     project = models.ForeignKey(Project,on_delete=models.CASCADE)
     name = models.CharField(max_length=128)
     description = models.TextField(max_length=2048)
@@ -92,7 +99,10 @@ class Issue(models.Model):
 class Comment(models.Model):
 
     created_time = models.DateTimeField(auto_now_add=True)
-    author = models.ForeignKey(Contributor,on_delete=models.CASCADE)
+    author = models.ForeignKey(
+        to=settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
     description = models.TextField(max_length=2048)
     project = models.ForeignKey(Project,on_delete=models.CASCADE)
     issue = models.ForeignKey(Issue,on_delete=models.CASCADE)
