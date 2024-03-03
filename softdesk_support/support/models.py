@@ -13,6 +13,8 @@ class User(AbstractUser):
     can_be_contacted = models.BooleanField()
     can_data_be_shared = models.BooleanField()
 
+    REQUIRED_FIELDS = ['age','can_be_contacted','can_data_be_shared']
+
 class Project(models.Model):
 
     BACK_END = "BACK_END"
