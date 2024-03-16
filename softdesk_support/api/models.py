@@ -1,19 +1,8 @@
-from django.contrib.auth.models import AbstractUser
-from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.conf import settings
 
-class User(AbstractUser):
-    # La classe AbstractUser contient tous les champs de la classe User
-    # entre autres champs nom d'utilisateur et mot de passe (identifants)
-    created_time = models.DateTimeField(auto_now_add=True)
-    age = models.PositiveSmallIntegerField(
-        validators=[MinValueValidator(15), MaxValueValidator(100)]
-    )
-    can_be_contacted = models.BooleanField()
-    can_data_be_shared = models.BooleanField()
+from authentication.models import User
 
-    REQUIRED_FIELDS = ['age','can_be_contacted','can_data_be_shared']
 
 class Project(models.Model):
 

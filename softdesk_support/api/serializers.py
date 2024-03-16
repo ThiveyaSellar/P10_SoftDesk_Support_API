@@ -15,7 +15,17 @@ class UserSerializer(ModelSerializer):
         ]
 
 class ProjectSerializer(ModelSerializer):
-    pass
+
+    class Meta:
+        model = Project
+        fields = [
+            'created_time',
+            'author',
+            'contributors',
+            'name',
+            'description',
+            'type'
+        ]
 
 class IssueSerializer(ModelSerializer):
     pass
