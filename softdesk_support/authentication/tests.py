@@ -1,107 +1,341 @@
 # Quels tests écrire pour cette ressource ?
 # On va y réfléchir et si on trouve pas on va s'aider de ChatGPT
 # Si non on va demander au mentor
-
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Q
 from django.urls import reverse_lazy
 from rest_framework.test import APITestCase, force_authenticate
 from rest_framework.authtoken.models import Token
 
 from authentication.models import User
 
-class TestUser(APITestCase):
 
-    url = reverse_lazy('users-list')
+class SupportAPITestCase(APITestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+
+        cls.admin = User.objects.create_user(
+            username="test_admin",
+            password="test_admin",
+            age=30,
+            email="test_admin@support.fr",
+            first_name="test_admin",
+            last_name="test_admin",
+            can_be_contacted=True,
+            can_data_be_shared=True,
+            is_superuser=True
+        )
+        cls.user = User.objects.create_user(
+            username="user1",
+            password="user1",
+            age=25,
+            email="user1@support.fr",
+            first_name="user1",
+            last_name="user1",
+            can_be_contacted=True,
+            can_data_be_shared=True
+        )
+        cls.author = User.objects.create_user(
+            username="user2",
+            password="user2",
+            age=25,
+            email="user2@support.fr",
+            first_name="user2",
+            last_name="user2",
+            can_be_contacted=True,
+            can_data_be_shared=True
+        )
+        cls.collaborator = User.objects.create_user(
+            username="user3",
+            password="user3",
+            age=25,
+            email="user3@support.fr",
+            first_name="user3",
+            last_name="user3",
+            can_be_contacted=True,
+            can_data_be_shared=True
+        )
 
     def format_datetime(self,value):
         return value.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
-    # Test Create a user
-    def test_create(self):
-        self.assertFalse(User.objects.exists())
+class TestUser(SupportAPITestCase):
+
+    # Tester les endpoints
+    # En faisant des requêtes vers les endpoints
+    # Observer si ce qu'on obtient est bien ce qu'on attend
+    url_list = reverse_lazy('users-list')
+    url_detail = reverse_lazy('users-detail', args=[2])
+
+    # Create a user by signing up
+    def test_signing_up(self):
         response = self.client.post(
-            self.url,
+            '/api/sign-up/',
             data={
-                "age": 32,
+                "username":"toto",
+                "password":"toto",
+                "password2":"toto",
+                "age":25,
+                "email":"toto@toto.fr",
+                "first_name":"toto",
+                "last_name":"toto",
+                "can_be_contacted": True,
+                "can_data_be_shared": True
+            }
+        )
+        self.assertTrue(response.status_code,201)
+        expected = {
+            "username": "toto",
+            "password": "toto",
+            "password2": "toto",
+            "age": 25,
+            "email": "toto@toto.fr",
+            "first_name": "toto",
+            "last_name": "toto",
+            "can_be_contacted": True,
+            "can_data_be_shared": True,
+        }
+
+        self.assertEqual(response.json(), expected)
+
+    def test_username_already_exists(self):
+
+        response = self.client.post(
+            '/api/sign-up/',
+            data={
+                "username": "user1",
+                "password": "user2",
+                "password2": "user2",
+                "age": 25,
+                "email": "user2@user2.fr",
+                "first_name": "user2",
+                "last_name": "user2",
+                "can_be_contacted": True,
+                "can_data_be_shared": True
+            }
+        )
+        self.assertTrue(response.status_code, 400)
+
+    def test_email_already_exists(self):
+
+        response = self.client.post(
+            '/api/sign-up/',
+            data={
                 "username": "user2",
                 "password": "user2",
+                "password2": "user2",
+                "age": 25,
+                "email": "user1@user1.fr",
+                "first_name": "user2",
+                "last_name": "user2",
+                "can_be_contacted": True,
+                "can_data_be_shared": True
+            }
+        )
+        self.assertTrue(response.status_code, 400)
+
+    def test_logging(self):
+        response = self.client.post(
+            '/api/login/',
+            data={
+                "username":"user1",
+                "password" : "user1"
+            }
+        )
+        self.assertIn('access',response.json())
+        self.assertIn('refresh',response.json())
+
+    def support_api_authentication(self, username, password):
+        response = self.client.post(
+            '/api/login/',
+            data={
+                "username": username,
+                "password": password
+            }
+        )
+
+        print("--------------------------------")
+        print(username)
+        print(password)
+        print(response)
+        print("--------------------------------")
+        access = response.json()['access']
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
+
+    def test_create_as_admin(self):
+
+        self.support_api_authentication("test_admin","test_admin")
+
+        def check_user_existence(username, email):
+            try:
+                User.objects.get(Q(username=username)|Q(email=email))
+                return True
+            except ObjectDoesNotExist:
+                return False
+
+        self.assertFalse(check_user_existence("user4","user4@support.fr"))
+
+        response = self.client.post(
+            self.url_list,
+            data = {
+                "username": "user4",
+                "password": "user4",
+                "password2": "user4",
+                "age": 25,
+                "email": "user4@support.fr",
+                "first_name": "user4",
+                "last_name": "user4",
                 "can_be_contacted": True,
                 "can_data_be_shared": True
             }
         )
         self.assertEqual(response.status_code,201)
-        self.assertTrue(User.objects.exists())
         expected = {
-            "age": 32,
-            "username": "user2",
+            "username": "user4",
+            "age": 25,
+            "email": "user4@support.fr",
+            "first_name": "user4",
+            "last_name": "user4",
             "can_be_contacted": True,
             "can_data_be_shared": True,
             "created_time": response.json()["created_time"]
         }
         self.assertEqual(expected, response.json())
+        self.assertTrue(check_user_existence("user4", "user4@support.fr"))
 
-    # Test Get a user
-    def test_get(self):
-        user = User.objects.create(
-            username="toto",
-            password="toto",
-            age=25,
-            can_be_contacted=True,
-            can_data_be_shared=True
+    def test_create_as_user(self):
+
+        self.support_api_authentication("user1","user1")
+
+        def check_user_existence(username, email):
+            try:
+                User.objects.get(Q(username=username)|Q(email=email))
+                return True
+            except ObjectDoesNotExist:
+                return False
+
+        self.assertFalse(check_user_existence("user4","user4@support.fr"))
+
+        response = self.client.post(
+            self.url_list,
+            data = {
+                "username": "user4",
+                "password": "user4",
+                "password2": "user4",
+                "age": 25,
+                "email": "user4@support.fr",
+                "first_name": "user4",
+                "last_name": "user4",
+                "can_be_contacted": True,
+                "can_data_be_shared": True
+            }
         )
-        response = self.client.get(self.url)
+        self.assertEqual(response.status_code,201)
+        expected = {
+            "username": "user4",
+            "age": 25,
+            "email": "user4@support.fr",
+            "first_name": "user4",
+            "last_name": "user4",
+            "can_be_contacted": True,
+            "can_data_be_shared": True,
+            "created_time": response.json()["created_time"]
+        }
+        self.assertEqual(expected, response.json())
+        self.assertTrue(check_user_existence("user4", "user4@support.fr"))
+
+    def test_get_users(self):
+        users = User.objects.all()
+        response = self.client.get(self.url_list)
         self.assertEqual(response.status_code, 200)
         expected = [
             {
-                "age": 25,
-                "username": "toto",
+                "username": "test_admin",
+                "age": 30,
+                "email": "test_admin@support.fr",
+                "first_name": "test_admin",
+                "last_name": "test_admin",
                 "can_be_contacted": True,
                 "can_data_be_shared": True,
-                "created_time": self.format_datetime(user.created_time)
+                "created_time": self.format_datetime(users[0].created_time)
+            },
+            {
+                "username": "user1",
+                "age": 25,
+                "email": "user1@support.fr",
+                "first_name": "user1",
+                "last_name": "user1",
+                "can_be_contacted": True,
+                "can_data_be_shared": True,
+                "created_time": self.format_datetime(users[1].created_time)
+            },
+            {
+                "username": "user2",
+                "age": 25,
+                "email": "user2@support.fr",
+                "first_name": "user2",
+                "last_name": "user2",
+                "can_be_contacted": True,
+                "can_data_be_shared": True,
+                "created_time": self.format_datetime(users[2].created_time)
+            },
+            {
+                "username": "user3",
+                "age": 25,
+                "email": "user3@support.fr",
+                "first_name": "user3",
+                "last_name": "user3",
+                "can_be_contacted": True,
+                "can_data_be_shared": True,
+                "created_time": self.format_datetime(users[3].created_time)
             }
         ]
         self.assertEqual(expected, response.json()["results"])
 
-    """def setAuthorization(self):
-        self.user = User.objects.create(username='toto',password='toto')
-        self.token = Token.objects.create(user=self.user)
-        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)"""
-
-    # Test Update a user
-    def test_update(self):
-        user = User.objects.create(
-            username="toto",
-            password="toto",
-            age=25,
-            can_be_contacted=True,
-            can_data_be_shared=True
-        )
-        response = self.client.patch(self.url,data={"age":27})
-        force_authenticate(response, user=user)
+    def test_get_user(self):
+        user = User.objects.get(pk=2)
+        response = self.client.get("/api/users/2/")
         self.assertEqual(response.status_code, 200)
         expected = {
+            "username": "user1",
+            "age": 25,
+            "email": "user1@support.fr",
+            "first_name": "user1",
+            "last_name": "user1",
+            "can_be_contacted": True,
+            "can_data_be_shared": True,
+            "created_time": self.format_datetime(user.created_time)
+        }
+        self.assertEqual(expected, response.json())
+
+    def test_update(self):
+        user = User.objects.get(pk=2)
+
+        self.support_api_authentication("user1", "user1")
+
+        response = self.client.patch(self.url_detail, data={"age": 27})
+        self.assertEqual(response.status_code, 200)
+        expected = {
+            "username": "user1",
             "age": 27,
-            "username": "toto",
+            "email": "user1@support.fr",
+            "first_name": "user1",
+            "last_name": "user1",
             "can_be_contacted": True,
             "can_data_be_shared": True,
             "created_time": self.format_datetime(user.created_time)
         }
         self.assertEqual(response.json(), expected)
 
-    # Test Delete a user
+    def test_delete(self):
+        self.assertTrue(User.objects.filter(username="user1").exists())
 
-    """def test_delete(self):
-        self.assertFalse(User.objects.exist())
-        response = self.client.post(
-            self.url,
-            data = {
-                "age": 32,
-                "username": "user2",
-                "password": "user2",
-                "can_be_contacted": True,
-                "can_data_be_shared": True
-            }
-        )
-        self.assertEqual(response.status_code, 201)
-        self.assertTrue(User.objects.exist())
-        response = self.client.delete(self.url + '',)"""
-    # Test Get a list of user
+        # Authentication
+        self.support_api_authentication("user1", "user1")
+
+        # Deletion
+        response = self.client.delete(self.url_detail)
+        self.assertEqual(response.status_code, 204)
+
+        self.assertFalse(User.objects.filter(username="user1").exists())

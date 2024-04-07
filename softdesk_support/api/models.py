@@ -87,6 +87,7 @@ class Issue(models.Model):
     priority = models.CharField(max_length=30,choices=PRIORITY_CHOICES)
     tag = models.CharField(max_length=30,choices=TAG_CHOICES)
 
+
 class Comment(models.Model):
 
     created_time = models.DateTimeField(auto_now_add=True)

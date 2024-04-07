@@ -37,7 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'support',
+    'api',
+    'authentication',
     'rest_framework',
     'rest_framework_simplejwt',
 ]
@@ -47,7 +48,7 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 100,
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
 }
 
 SIMPLE_JWT = {
@@ -141,4 +142,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Par défaut Django utilise le modèle User pour l'authentification
 # Permet d'indiquer à Django d'utiliser le modèle personnalisé User
-AUTH_USER_MODEL = "support.User"
+AUTH_USER_MODEL = "authentication.User"
+
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+)

@@ -11,4 +11,6 @@ class User(AbstractUser):
     can_be_contacted = models.BooleanField()
     can_data_be_shared = models.BooleanField()
 
+    is_active = True
+
     REQUIRED_FIELDS = ['age','can_be_contacted','can_data_be_shared']

@@ -21,14 +21,32 @@ from rest_framework import routers
 from rest_framework_simplejwt.views import TokenObtainPairView, \
     TokenRefreshView
 
-from support.views import UserAPIView
+from authentication.views import UserViewSet
+from api.views import ProjectAPIView, IssueAPIView, CommentAPIView
+
+# Utilisation d'un router pour la ressource User défini avec un ModelViewSet
+from authentication.views import SignUpView, LoginView
+
+router = routers.SimpleRouter()
+router.register('users', UserViewSet, basename='users')
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api-auth/', include('rest_framework.urls')),
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    #path('api/', include(router.urls)),
-    path('api/user/', UserAPIView.as_view())
+    path('api/', include(router.urls)),
+    path('api/sign-up/', SignUpView.as_view({'post': 'create'})),
+    path('api/login/', LoginView.as_view()),
+    path('api/token', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/projects', ProjectAPIView.as_view()),
+    path('api/projects/<int:pk>/', ProjectAPIView.as_view()),
+    # path('api/issues', IssueAPIView.as_view()),
+    # path('api/issues/<int:pk>/', IssueAPIView.as_view()),
+    # path('api/comments', CommentAPIView.as_view()),
+    # path('api/comments/<int:pk>/', CommentAPIView.as_view()),
+    path('api/projects/<int:pk>/issues', IssueAPIView.as_view()),
+    path('api/projects/<int:pk>/issues/<int:pk2>/', IssueAPIView.as_view()),
+    path('api/issues/<int:pk>/comments', CommentAPIView.as_view()),
+    path('api/issues/<int:pk>/comments/<int:pk2>/', CommentAPIView.as_view())
 ]

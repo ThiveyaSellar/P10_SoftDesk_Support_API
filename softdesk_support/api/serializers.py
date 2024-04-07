@@ -1,18 +1,6 @@
 from rest_framework.serializers import ModelSerializer
 
-from support.models import User, Project, Issue, Comment
-
-class UserSerializer(ModelSerializer):
-
-    class Meta:
-        model = User
-        fields = [
-            'username',
-            'created_time',
-            'age',
-            'can_be_contacted',
-            'can_data_be_shared'
-        ]
+from api.models import Project, Issue, Comment
 
 class ProjectSerializer(ModelSerializer):
 
@@ -28,7 +16,29 @@ class ProjectSerializer(ModelSerializer):
         ]
 
 class IssueSerializer(ModelSerializer):
-    pass
+
+    class Meta:
+        model = Issue
+        fields = [
+            'created_time',
+            'author',
+            'contributor',
+            'project',
+            'name',
+            'description',
+            'status',
+            'priority',
+            'tag'
+        ]
 
 class CommentSerializer(ModelSerializer):
-    pass
+
+    class Meta:
+        model = Comment
+        fields = [
+            'created_time',
+            'author',
+            'description',
+            'project',
+            'issue'
+        ]
