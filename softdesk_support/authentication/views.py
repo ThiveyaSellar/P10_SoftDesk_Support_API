@@ -2,9 +2,9 @@ from django.contrib.auth import authenticate, login
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet, ViewSet
-from rest_framework.permissions import IsAdminUser, AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework import status
-from .permissions import IsAuthor
+from .permissions import IsOwner
 
 from .models import User
 from .serializers import UserSerializer
@@ -22,7 +22,7 @@ def get_tokens_for_user(user):
 class UserViewSet(ModelViewSet):
 
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated,IsAuthor|IsAdminUser]
+    permission_classes = [IsAuthenticated,IsOwner|IsAdminUser]
 
     def get_queryset(self):
         return User.objects.all()

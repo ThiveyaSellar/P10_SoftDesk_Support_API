@@ -2,9 +2,11 @@ from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer, CharField
 
 from .models import User
+from api.serializers import ProjectSerializer
 
 class UserSerializer(ModelSerializer):
 
+    projects = ProjectSerializer(many=True)
     class Meta:
         model = User
         fields = [
@@ -16,7 +18,7 @@ class UserSerializer(ModelSerializer):
             'age',
             'can_be_contacted',
             'can_data_be_shared',
-            'created_time'
+            'projects'
         ]
 
 class SignUpSerializer(ModelSerializer):
