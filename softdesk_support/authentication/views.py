@@ -73,5 +73,3 @@ class LoginView(APIView):
             {'message': 'Successfully logged', **tokens},
             status=status.HTTP_200_OK
         )
-
-# class UsersProjectView()

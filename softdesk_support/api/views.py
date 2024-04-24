@@ -1,6 +1,6 @@
 from django.db import transaction
 from django.http import Http404
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 from rest_framework.views import APIView
@@ -17,8 +17,9 @@ from authentication.serializers import UserSerializer
 from .permissions import IsAuthor, IsContributor
 
 
-#@action(detail=True, methods=['patch']) # Action ne parait pas fonctionner pour les APIView mais pour les Viewset
+#@action(detail=True, methods=['patch']) # Action ne fonctionne pour les APIView mais pour les Viewset
 @api_view(['PATCH'])
+@permission_classes([IsAuthenticated,IsContributor | IsAuthor])
 def add_collaborator(request, pk):
     # Définition d'une action accessible sur la méthode PATCH
     # Pour l'ajout d'un collaborateur à l'attribut du projet
@@ -47,6 +48,7 @@ def add_collaborator(request, pk):
     return Response({"message": "ERROR : Contributor hasn't been added to the project."})
 
 @api_view(['DELETE'])
+@permission_classes([IsAuthenticated,IsContributor | IsAuthor])
 def delete_collaborator(request, pk):
     if request.method == 'DELETE':
         if 'username' not in request.data:
@@ -60,6 +62,7 @@ def delete_collaborator(request, pk):
     return Response({"message": "ERROR : Contributor hasn't been deleted from the project."})
 
 @api_view(['PATCH'])
+@permission_classes([IsAuthenticated,IsContributor | IsAuthor])
 def change_status(request,pk,pk2):
     if request.method == 'PATCH':
         # Récupérer le ticket en question grâce à l'id
@@ -80,6 +83,7 @@ def change_status(request,pk,pk2):
     return Response({"message": "The status hasn't been changed."})
 
 @api_view(['PATCH'])
+@permission_classes([IsAuthenticated,IsContributor | IsAuthor])
 def assign_contributor(request,pk,pk2):
     if request.method == 'PATCH':
         # Récupérer le ticket en question grâce à l'id
@@ -108,13 +112,12 @@ def get_object(pk, ressource_type):
 
 class ProjectAPIView(APIView):
     serializer_class = ProjectSerializer
-    """permission_classes = [IsAuthenticated,
-                          IsAuthor | IsContributor | IsAdminUser]"""
-    permission_classes = [IsAuthenticated,
-                          IsAuthor]
+    permission_classes = [IsAuthenticated,IsContributor | IsAuthor]
+
     def get(self, request, pk=None, format=None):
         if pk is not None:
             project = get_object(pk, Project)
+            self.check_object_permissions(request, project)
             serializer = ProjectSerializer(project)
         else:
             projects = Project.objects.all()
@@ -130,8 +133,8 @@ class ProjectAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk, format=None):
-        print("----------------ICI------------------------")
         project = get_object(pk, Project)
+        self.check_object_permissions(request, project)
         serializer = ProjectSerializer(project, data=request.data,
                                        partial=True)
         if serializer.is_valid():
@@ -141,9 +144,9 @@ class ProjectAPIView(APIView):
 
     def delete(self, request, pk, format=None):
         project = get_object(pk, Project)
+        self.check_object_permissions(request, project)
         project.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
 
 class IssueAPIView(APIView):
     serializer_class = IssueSerializer
@@ -156,6 +159,7 @@ class IssueAPIView(APIView):
     def get(self, request, pk, pk2=None, format=None):
         if pk2 is not None:
             issue = get_object(pk2, Issue)
+            self.check_object_permissions(request, issue)
             serializer = IssueSerializer(issue)
         else:
             issues = Issue.objects.filter(project=pk)
@@ -184,8 +188,10 @@ class IssueAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def patch(self, request, pk2, format=None):
+    def patch(self, request, pk, pk2, format=None):
+        print("icic")
         issue = get_object(pk2, Issue)
+        self.check_object_permissions(request, issue)
         serializer = IssueSerializer(issue, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -195,14 +201,14 @@ class IssueAPIView(APIView):
     def delete(self, request, pk, format=None):
         print("Deleting ...")
         issue = get_object(pk, Issue)
+        self.check_object_permissions(request, issue)
         issue.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
 
 class CommentAPIView(APIView):
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated,
-                          IsAuthor | IsContributor | IsAdminUser]
+                          IsAuthor | IsAdminUser]
 
     def get_queryset(self, pk):
         return Comment.objects.filter(issue=pk)
@@ -210,6 +216,7 @@ class CommentAPIView(APIView):
     def get(self, request, pk, pk2=None, format=None):
         if pk2 is not None:
             comment = get_object(pk2, Comment)
+            self.check_object_permissions(request, comment)
             serializer = CommentSerializer(comment)
         else:
             comments = Comment.objects.filter(issue=pk)
@@ -246,6 +253,7 @@ class CommentAPIView(APIView):
 
     def delete(self, request, pk, format=None):
         comment = get_object(pk, Comment)
+        self.check_object_permissions(request, comment)
         comment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
