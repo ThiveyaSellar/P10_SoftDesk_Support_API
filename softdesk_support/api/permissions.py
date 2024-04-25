@@ -8,17 +8,13 @@ class IsAuthor(BasePermission):
     # self.check_object_permissions(request, obj) une fois l'instance récupérée
 
     def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_METHODS:
-            return True
         return obj.author == request.user
 
 
 class IsContributor(BasePermission):
 
     def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_METHODS:
-            return request.user in obj.contributors.all()
-        print("nop")
-        return False
+        return request.user in obj.contributors.all()
+
 
 

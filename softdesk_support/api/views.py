@@ -1,6 +1,7 @@
 from django.db import transaction
 from django.http import Http404
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 from rest_framework.views import APIView
@@ -19,7 +20,7 @@ from .permissions import IsAuthor, IsContributor
 
 #@action(detail=True, methods=['patch']) # Action ne fonctionne pour les APIView mais pour les Viewset
 @api_view(['PATCH'])
-@permission_classes([IsAuthenticated,IsContributor | IsAuthor])
+@permission_classes([IsAuthenticated & IsContributor | IsAuthor])
 def add_collaborator(request, pk):
     # Définition d'une action accessible sur la méthode PATCH
     # Pour l'ajout d'un collaborateur à l'attribut du projet
@@ -39,12 +40,14 @@ def add_collaborator(request, pk):
 
         # Rechercher le projet à partir de l'id spécifié dans le chemin
         project = Project.objects.get(pk=pk)
-        # Ajouter le collaborateur au projet
-        project.contributors.add(collaborator)
-        # Enregistrer le projet
-        project.save()
 
-        return Response({"message":'New contributor added.'})
+        if project.author == request.user:      # Ajouter le collaborateur au projet
+            project.contributors.add(collaborator)
+            # Enregistrer le projet
+            project.save()
+            return Response({"message":'New contributor added.'})
+        else:
+            return Response({"message": "User doesn't have permission."})
     return Response({"message": "ERROR : Contributor hasn't been added to the project."})
 
 @api_view(['DELETE'])
@@ -56,9 +59,12 @@ def delete_collaborator(request, pk):
         collaborator_username = request.data['username']
         collaborator = User.objects.get(username=collaborator_username)
         project = Project.objects.get(pk=pk)
-        project.contributors.remove(collaborator)
-        project.save()
-        return Response('The contributor has been deleted from the project.')
+        if project.author == request.user:
+            project.contributors.remove(collaborator)
+            project.save()
+            return Response('The contributor has been deleted from the project.')
+        else:
+            return Response({"message": "User doesn't have permission."})
     return Response({"message": "ERROR : Contributor hasn't been deleted from the project."})
 
 @api_view(['PATCH'])
@@ -112,10 +118,12 @@ def get_object(pk, ressource_type):
 
 class ProjectAPIView(APIView):
     serializer_class = ProjectSerializer
-    permission_classes = [IsAuthenticated,IsContributor | IsAuthor]
+    permission_classes = [IsAuthenticated & IsContributor | IsAuthor]
 
     def get(self, request, pk=None, format=None):
+        print("a")
         if pk is not None:
+            print("b")
             project = get_object(pk, Project)
             self.check_object_permissions(request, project)
             serializer = ProjectSerializer(project)
