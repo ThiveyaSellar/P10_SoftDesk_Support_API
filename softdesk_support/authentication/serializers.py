@@ -6,7 +6,8 @@ from api.serializers import ProjectSerializer
 
 class UserSerializer(ModelSerializer):
 
-    projects = ProjectSerializer(many=True)
+    # projects = ProjectSerializer(many=True)
+    projects = ProjectSerializer(many=True, required=False, allow_null=True)
     class Meta:
         model = User
         fields = [

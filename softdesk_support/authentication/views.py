@@ -22,10 +22,24 @@ def get_tokens_for_user(user):
 class UserViewSet(ModelViewSet):
 
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated,IsOwner|IsAdminUser]
+    permission_classes = [IsAuthenticated, IsOwner | IsAdminUser]
 
     def get_queryset(self):
-        return User.objects.all()
+        if self.request.user.is_superuser:
+            return User.objects.all()
+        else:
+            return User.objects.none()
+
+    def retrieve(self, request, pk=None):
+        try:
+            user = User.objects.get(pk=pk)
+            self.check_object_permissions(request, user)
+            serializer = self.get_serializer(user)
+            return Response(serializer.data)
+        except User.DoesNotExist:
+            return Response({"detail": "User not found."},
+                            status=status.HTTP_404_NOT_FOUND)
+
 
 class SignUpView(ViewSet):
 

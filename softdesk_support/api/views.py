@@ -118,12 +118,10 @@ def get_object(pk, ressource_type):
 
 class ProjectAPIView(APIView):
     serializer_class = ProjectSerializer
-    permission_classes = [IsAuthenticated & IsContributor | IsAuthor]
+    permission_classes = [IsAuthenticated & IsAuthor]
 
     def get(self, request, pk=None, format=None):
-        print("a")
         if pk is not None:
-            print("b")
             project = get_object(pk, Project)
             self.check_object_permissions(request, project)
             serializer = ProjectSerializer(project)
@@ -133,8 +131,12 @@ class ProjectAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request, format=None):
-        # Serializing the data from the body of the request
-        serializer = ProjectSerializer(data=request.data)
+        data = request.data.copy()
+        data.update({
+            'author': request.user.pk,
+            'contributors': request.user.pk
+        })
+        serializer = ProjectSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -158,14 +160,14 @@ class ProjectAPIView(APIView):
 
 class IssueAPIView(APIView):
     serializer_class = IssueSerializer
-    permission_classes = [IsAuthenticated,
-                          IsAuthor | IsContributor | IsAdminUser]
+    permission_classes = [IsAuthenticated & IsContributor | IsAuthor]
 
     def get_queryset(self, pk):
         return Issue.objects.filter(project=pk)
 
     def get(self, request, pk, pk2=None, format=None):
         if pk2 is not None:
+            get_object(pk, Project)
             issue = get_object(pk2, Issue)
             self.check_object_permissions(request, issue)
             serializer = IssueSerializer(issue)
@@ -174,10 +176,13 @@ class IssueAPIView(APIView):
             serializer = IssueSerializer(issues, many=True)
         return Response(serializer.data)
 
-    def post(self, request, pk, format=None):
+    def post(self, request, pk, pk2=None, format=None):
         # Compléter les données avant de sérialiser
+        project = get_object(pk, Project)
+        self.check_object_permissions(request, project)
         if "contributor" not in request.data:
             contributor = request.user.pk
+            print(contributor)
         else:
             contributor_username = request.data["contributor"]
             try:
@@ -197,7 +202,6 @@ class IssueAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk, pk2, format=None):
-        print("icic")
         issue = get_object(pk2, Issue)
         self.check_object_permissions(request, issue)
         serializer = IssueSerializer(issue, data=request.data, partial=True)
@@ -206,23 +210,25 @@ class IssueAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, pk, format=None):
+    def delete(self, request, pk, pk2, format=None):
         print("Deleting ...")
-        issue = get_object(pk, Issue)
+        issue = get_object(pk2, Issue)
         self.check_object_permissions(request, issue)
         issue.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class CommentAPIView(APIView):
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticated,
-                          IsAuthor | IsAdminUser]
+    permission_classes = [IsAuthenticated & IsAuthor]
 
     def get_queryset(self, pk):
+        # pk correspond à l'id de l'issue
         return Comment.objects.filter(issue=pk)
 
     def get(self, request, pk, pk2=None, format=None):
         if pk2 is not None:
+            # Récupérer le ticket avec pk
+            get_object(pk, Issue)
             comment = get_object(pk2, Comment)
             self.check_object_permissions(request, comment)
             serializer = CommentSerializer(comment)
@@ -250,8 +256,9 @@ class CommentAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def patch(self, request, pk, format=None):
-        comment = get_object(pk, Comment)
+    def patch(self, request, pk, pk2=None, format=None):
+        get_object(pk, Issue)
+        comment = get_object(pk2, Comment)
         serializer = CommentSerializer(comment, data=request.data,
                                        partial=True)
         if serializer.is_valid():
@@ -259,8 +266,9 @@ class CommentAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, pk, format=None):
-        comment = get_object(pk, Comment)
+    def delete(self, request, pk, pk2, format=None):
+        get_object(pk, Issue)
+        comment = get_object(pk2, Comment)
         self.check_object_permissions(request, comment)
         comment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

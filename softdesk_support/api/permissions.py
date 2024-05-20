@@ -1,4 +1,5 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
+from .models import Issue
 
 class IsAuthor(BasePermission):
     # On peut implémenter has_permission et/ou has_object_permission
@@ -14,6 +15,10 @@ class IsAuthor(BasePermission):
 class IsContributor(BasePermission):
 
     def has_object_permission(self, request, view, obj):
+        if request.method == 'DELETE':
+            return False
+        if isinstance(obj, Issue):
+            return request.user == obj.contributor
         return request.user in obj.contributors.all()
 
 
