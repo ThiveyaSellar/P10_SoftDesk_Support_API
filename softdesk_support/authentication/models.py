@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
+
 class User(AbstractUser):
 
     created_time = models.DateTimeField(auto_now_add=True)
@@ -13,4 +14,4 @@ class User(AbstractUser):
 
     is_active = True
 
-    REQUIRED_FIELDS = ['age','can_be_contacted','can_data_be_shared']
+    REQUIRED_FIELDS = ['age', 'can_be_contacted', 'can_data_be_shared']

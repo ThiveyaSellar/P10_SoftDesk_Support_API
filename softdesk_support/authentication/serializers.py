@@ -4,10 +4,12 @@ from rest_framework.serializers import ModelSerializer, CharField
 from .models import User
 from api.serializers import ProjectSerializer
 
+
 class UserSerializer(ModelSerializer):
 
     # projects = ProjectSerializer(many=True)
     projects = ProjectSerializer(many=True, required=False, allow_null=True)
+
     class Meta:
         model = User
         fields = [
@@ -21,6 +23,7 @@ class UserSerializer(ModelSerializer):
             'can_data_be_shared',
             'projects'
         ]
+
 
 class SignUpSerializer(ModelSerializer):
 
@@ -51,7 +54,7 @@ class SignUpSerializer(ModelSerializer):
         if password != password2:
             raise serializers.ValidationError(
                 {
-                    'name':'Passwords don\'t match'
+                    'name': 'Passwords don\'t match'
                 }
             )
 

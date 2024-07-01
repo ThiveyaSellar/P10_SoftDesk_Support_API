@@ -1,5 +1,6 @@
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
+
 class IsOwner(BasePermission):
     """
     Object-level permission to only allow owners of an object to edit it.
@@ -8,19 +9,12 @@ class IsOwner(BasePermission):
     """
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS:
-            print("aa")
             return True
-
-        print("bb")
-        return False
+        return request.user and request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
         # Read permissions are allowed to any request,
         # so we'll always allow GET, HEAD or OPTIONS requests.
-        print("a")
-        if request.method in SAFE_METHODS:
-            print("b")
-            return True
-        print("c")
+
         # Write permissions are only allowed to the owner of the object.
-        return obj == request.user
+        return obj == request.user or request.user.is_superuser

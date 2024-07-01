@@ -39,7 +39,11 @@ urlpatterns = [
     path('api/sign-up/', SignUpView.as_view({'post': 'create'})),
     path('api/login/', LoginView.as_view()),
     path('api/token', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh', TokenRefreshView.as_view(), name='token_refresh'),
+    path(
+        'api/token/refresh',
+        TokenRefreshView.as_view(),
+        name='token_refresh'
+    ),
 
     path('api/projects', ProjectAPIView.as_view()),
     path('api/projects/<int:pk>/', ProjectAPIView.as_view()),
@@ -48,11 +52,20 @@ urlpatterns = [
 
     path('api/projects/<int:pk>/issues', IssueAPIView.as_view()),
     path('api/projects/<int:pk>/issues/<int:pk2>/', IssueAPIView.as_view()),
-    path('api/projects/<int:pk>/issues/<int:pk2>/change_status', change_status),
-    path('api/projects/<int:pk>/issues/<int:pk2>/assign_contributor', assign_contributor),
+    path(
+        'api/projects/<int:pk>/issues/<int:pk2>/change_status',
+        change_status
+    ),
+    path(
+        'api/projects/<int:pk>/issues/<int:pk2>/assign_contributor',
+        assign_contributor
+    ),
 
     path('api/issues/<int:pk>/comments', CommentAPIView.as_view()),
     path('api/issues/<int:pk>/comments/<int:pk2>/', CommentAPIView.as_view()),
 
-    path('api/users/<int:pk>/projects/<int:pk2>/tickets/', UserTicketsAPIView.as_view())
+    path(
+        'api/users/<int:pk>/projects/<int:pk2>/tickets/',
+        UserTicketsAPIView.as_view()
+    )
 ]

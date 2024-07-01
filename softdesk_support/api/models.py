@@ -74,9 +74,9 @@ class Issue(models.Model):
         on_delete=models.CASCADE,
         related_name="attributed_issues",
         null=True,
-        #blank=True
+        # blank=True
     )
-    project = models.ForeignKey(Project,on_delete=models.CASCADE)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
     name = models.CharField(max_length=128)
     description = models.TextField(max_length=2048)
     status = models.CharField(
@@ -84,8 +84,8 @@ class Issue(models.Model):
         choices=STATUS_CHOICES,
         default=TO_DO
     )
-    priority = models.CharField(max_length=30,choices=PRIORITY_CHOICES)
-    tag = models.CharField(max_length=30,choices=TAG_CHOICES)
+    priority = models.CharField(max_length=30, choices=PRIORITY_CHOICES)
+    tag = models.CharField(max_length=30, choices=TAG_CHOICES)
 
 
 class Comment(models.Model):
@@ -96,5 +96,5 @@ class Comment(models.Model):
         on_delete=models.CASCADE
     )
     description = models.TextField(max_length=2048)
-    project = models.ForeignKey(Project,on_delete=models.CASCADE)
-    issue = models.ForeignKey(Issue,on_delete=models.CASCADE)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    issue = models.ForeignKey(Issue, on_delete=models.CASCADE)

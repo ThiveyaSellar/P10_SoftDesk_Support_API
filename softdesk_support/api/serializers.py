@@ -1,6 +1,6 @@
 from rest_framework.serializers import ModelSerializer
-
 from api.models import Project, Issue, Comment
+
 
 class ProjectSerializer(ModelSerializer):
 
@@ -14,6 +14,7 @@ class ProjectSerializer(ModelSerializer):
             'description',
             'type'
         ]
+
 
 class IssueSerializer(ModelSerializer):
 
@@ -30,6 +31,7 @@ class IssueSerializer(ModelSerializer):
             'priority',
             'tag'
         ]
+
 
 class CommentSerializer(ModelSerializer):
 

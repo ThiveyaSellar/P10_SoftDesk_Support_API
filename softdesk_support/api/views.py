@@ -1,9 +1,9 @@
-from django.db import transaction
+from django.db.models import Q
 from django.http import Http404
-from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.exceptions import PermissionDenied
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from django.shortcuts import get_object_or_404
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -13,14 +13,13 @@ from authentication.models import User
 
 from .serializers import ProjectSerializer, IssueSerializer, \
     CommentSerializer
-from authentication.serializers import UserSerializer
 
 from .permissions import IsAuthor, IsContributor
+from authentication.permissions import IsOwner
 
 
-#@action(detail=True, methods=['patch']) # Action ne fonctionne pour les APIView mais pour les Viewset
 @api_view(['PATCH'])
-@permission_classes([IsAuthenticated & IsContributor | IsAuthor])
+@permission_classes([IsAuthenticated & IsContributor | IsAuthor | IsAdminUser])
 def add_collaborator(request, pk):
     # Définition d'une action accessible sur la méthode PATCH
     # Pour l'ajout d'un collaborateur à l'attribut du projet
@@ -32,7 +31,7 @@ def add_collaborator(request, pk):
     # Le nom d'utilisateur est unique
 
     if request.method == "PATCH":
-
+        print("ok")
         collaborator_username = request.data['username']
 
         # Rechercher le collaborateur dans la base de données
@@ -41,46 +40,62 @@ def add_collaborator(request, pk):
         # Rechercher le projet à partir de l'id spécifié dans le chemin
         project = Project.objects.get(pk=pk)
 
-        if project.author == request.user:      # Ajouter le collaborateur au projet
+        if project.author == request.user or request.user.is_superuser:
             project.contributors.add(collaborator)
             # Enregistrer le projet
             project.save()
-            return Response({"message":'New contributor added.'})
+            return Response({"message": 'New contributor added.'})
         else:
             return Response({"message": "User doesn't have permission."})
-    return Response({"message": "ERROR : Contributor hasn't been added to the project."})
+    return Response({
+        "message": "ERROR : Contributor hasn't been added to the project."
+    })
+
 
 @api_view(['DELETE'])
-@permission_classes([IsAuthenticated,IsContributor | IsAuthor])
+@permission_classes([IsAuthenticated & IsContributor | IsAuthor | IsAdminUser])
 def delete_collaborator(request, pk):
     if request.method == 'DELETE':
         if 'username' not in request.data:
-            return Response({"message":"Username is missing for deletion."})
+            return Response({"message": "Username is missing for deletion."})
         collaborator_username = request.data['username']
         collaborator = User.objects.get(username=collaborator_username)
         project = Project.objects.get(pk=pk)
-        if project.author == request.user:
+        if project.author == request.user or request.user.is_superuser:
             project.contributors.remove(collaborator)
             project.save()
-            return Response('The contributor has been deleted from the project.')
+            return Response({
+                "message": "The contributor has been deleted from the project."
+            })
         else:
-            return Response({"message": "User doesn't have permission."})
-    return Response({"message": "ERROR : Contributor hasn't been deleted from the project."})
+            return Response({
+                "message": "User doesn't have permission."
+            })
+    return Response({
+        "message": "ERROR : Contributor hasn't been deleted from the project."
+    })
+
 
 @api_view(['PATCH'])
-@permission_classes([IsAuthenticated,IsContributor | IsAuthor])
-def change_status(request,pk,pk2):
+@permission_classes([IsAuthenticated & IsContributor | IsAuthor | IsAdminUser])
+def change_status(request, pk, pk2):
     if request.method == 'PATCH':
         # Récupérer le ticket en question grâce à l'id
         issue = Issue.objects.get(pk=pk2)
+
+        if issue.author != request.user and not request.user.is_superuser:
+            return Response({
+                'message': 'You don\'t have permissions.'
+            })
         # Récupérer le nouveau statut dans le corps de la requête
         if "status" not in request.data:
             return Response({
                 'message': "Missing status field to change status."
             })
-        if request.data["status"].upper() not in ['TO DO', 'IN PROGRESS','FINISHED']:
+        data_status = request.data["status"].upper()
+        if data_status not in ['TO DO', 'IN PROGRESS', 'FINISHED']:
             return Response({
-                'message':"Status must be 'TO DO', 'IN PROGRESS' OR 'FINISHED'"
+                'message': "Status must be 'TO DO', 'IN PROGRESS', 'FINISHED'"
             })
         # Changer le statut du ticket
         issue.status = request.data["status"]
@@ -88,13 +103,19 @@ def change_status(request,pk,pk2):
         return Response('The issue has a new status.')
     return Response({"message": "The status hasn't been changed."})
 
+
 @api_view(['PATCH'])
-@permission_classes([IsAuthenticated,IsContributor | IsAuthor])
-def assign_contributor(request,pk,pk2):
+@permission_classes([IsAuthenticated & IsContributor | IsAuthor | IsAdminUser])
+def assign_contributor(request, pk, pk2):
     if request.method == 'PATCH':
         # Récupérer le ticket en question grâce à l'id
         issue = Issue.objects.get(pk=pk2)
         # Récupérer le nouveau statut dans le corps de la requête
+        if issue.author != request.user and not request.user.is_superuser:
+            return Response({
+                'message': 'You don\'t have permissions.'
+            })
+
         if "contributor" not in request.data:
             return Response({
                 'message': "Missing contributor field with the username."
@@ -104,11 +125,19 @@ def assign_contributor(request,pk,pk2):
             contributor = User.objects.get(username=contributor_username)
         except User.DoesNotExist:
             return Response({"message": "username doesn't exist."})
+        if contributor not in issue.project.contributors.all():
+            return Response({
+                'message': 'User is not part of the project.'
+            })
         # Changer le statut du ticket
         issue.contributor = contributor
         issue.save()
-        return Response('The issue has a new contributor.')
-    return Response({"message": "The issue's contributor hasn't been changed."})
+        serializer = IssueSerializer(issue)
+        return Response(serializer.data)
+    return Response({
+        "message": "The issue's contributor hasn't been changed."
+    })
+
 
 def get_object(pk, ressource_type):
     try:
@@ -116,17 +145,31 @@ def get_object(pk, ressource_type):
     except ressource_type.DoesNotExist:
         raise Http404
 
+
 class ProjectAPIView(APIView):
     serializer_class = ProjectSerializer
-    permission_classes = [IsAuthenticated & IsAuthor]
+    permission_classes = [IsAuthenticated & IsAuthor | IsContributor | IsAdminUser]
 
     def get(self, request, pk=None, format=None):
         if pk is not None:
             project = get_object(pk, Project)
             self.check_object_permissions(request, project)
-            serializer = ProjectSerializer(project)
+            if (
+                    request.user in project.contributors.all() or
+                    project.author == request.user or
+                    request.user.is_superuser
+            ):
+                serializer = ProjectSerializer(project)
+            else:
+                return Response(
+                    {"detail": "You don't have permissions."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         else:
-            projects = Project.objects.all()
+            user = request.user
+            projects = Project.objects.filter(
+                Q(author=user) | Q(contributors=user)
+            )
             serializer = ProjectSerializer(projects, many=True)
         return Response(serializer.data)
 
@@ -158,20 +201,29 @@ class ProjectAPIView(APIView):
         project.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class IssueAPIView(APIView):
     serializer_class = IssueSerializer
-    permission_classes = [IsAuthenticated & IsContributor | IsAuthor]
+    permission_classes = [IsAuthenticated & IsContributor | IsAuthor | IsAdminUser]
 
     def get_queryset(self, pk):
         return Issue.objects.filter(project=pk)
 
     def get(self, request, pk, pk2=None, format=None):
+        project = get_object(pk, Project)
         if pk2 is not None:
-            get_object(pk, Project)
-            issue = get_object(pk2, Issue)
+            # Récupérer le ticket qui a pour projet le projet récupéré
+            issue = get_object_or_404(Issue, pk=pk2, project=project)
             self.check_object_permissions(request, issue)
             serializer = IssueSerializer(issue)
         else:
+            if (
+                    request.user not in project.contributors.all() and
+                    not request.user.is_superuser
+            ):
+                return Response({
+                    'message': 'You are not a collaborator of this project.'
+                })
             issues = Issue.objects.filter(project=pk)
             serializer = IssueSerializer(issues, many=True)
         return Response(serializer.data)
@@ -188,7 +240,7 @@ class IssueAPIView(APIView):
             try:
                 contributor = User.objects.get(username=contributor_username).id
             except User.DoesNotExist:
-                return Response({"message":"username doesn't exist."})
+                return Response({"message": "username doesn't exist."})
         data = request.data.copy()
         data.update({
             'project': pk,
@@ -217,36 +269,38 @@ class IssueAPIView(APIView):
         issue.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class CommentAPIView(APIView):
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticated & IsAuthor]
+    permission_classes = [IsAuthenticated & IsContributor | IsAuthor | IsAdminUser]
 
     def get_queryset(self, pk):
         # pk correspond à l'id de l'issue
         return Comment.objects.filter(issue=pk)
 
     def get(self, request, pk, pk2=None, format=None):
+        issue = get_object(pk, Issue)
+        project = issue.project
+        self.check_object_permissions(request, project)
         if pk2 is not None:
             # Récupérer le ticket avec pk
-            get_object(pk, Issue)
             comment = get_object(pk2, Comment)
             self.check_object_permissions(request, comment)
             serializer = CommentSerializer(comment)
         else:
+            # Affiche tous les commentaires d'un ticket
             comments = Comment.objects.filter(issue=pk)
             serializer = CommentSerializer(comments, many=True)
         return Response(serializer.data)
 
     def post(self, request, pk, format=None):
         # Compléter les données avant de sérialiser
-        try:
-            issue = Issue.objects.get(pk=pk)
-            project = issue.project.id
-        except Issue.DoesNotExist:
-            raise Http404
+        issue = get_object(pk, Issue)
+        project = issue.project
+        self.check_object_permissions(request, project)
         data = request.data.copy()
         data.update({
-            'project': project,
+            'project': project.id,
             'author': request.user.pk,
             'issue': pk
         })
@@ -257,8 +311,8 @@ class CommentAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request, pk, pk2=None, format=None):
-        get_object(pk, Issue)
         comment = get_object(pk2, Comment)
+        self.check_object_permissions(request, comment)
         serializer = CommentSerializer(comment, data=request.data,
                                        partial=True)
         if serializer.is_valid():
@@ -273,10 +327,11 @@ class CommentAPIView(APIView):
         comment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
 class UserTicketsAPIView(APIView):
     serializer_class = IssueSerializer
-    permission_classes = [IsAuthenticated,
-                          IsAuthor | IsContributor | IsAdminUser]
+    permission_classes = [IsAuthenticated &
+                          IsOwner | IsAdminUser]
 
     def get_queryset(self, pk, pk2):
         # Récupérer tous les tickets d'un contributeur pour un projet
@@ -284,5 +339,7 @@ class UserTicketsAPIView(APIView):
 
     def get(self, request, pk, pk2, format=None):
         issues = Issue.objects.filter(contributor=pk, project=pk2)
+        user = get_object(pk, User)
+        self.check_object_permissions(request, user)
         serializer = IssueSerializer(issues, many=True)
         return Response(serializer.data)

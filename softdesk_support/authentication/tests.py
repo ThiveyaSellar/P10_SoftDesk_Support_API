@@ -1,13 +1,9 @@
-# Quels tests écrire pour cette ressource ?
-# On va y réfléchir et si on trouve pas on va s'aider de ChatGPT
-# Si non on va demander au mentor
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 from django.urls import reverse_lazy
-from rest_framework.test import APITestCase, force_authenticate
-from rest_framework.authtoken.models import Token
+from rest_framework.test import APITestCase
 
-from authentication.models import User
+from .models import User
 
 
 class SupportAPITestCase(APITestCase):
@@ -57,8 +53,9 @@ class SupportAPITestCase(APITestCase):
             can_data_be_shared=True
         )
 
-    def format_datetime(self,value):
+    def format_datetime(self, value):
         return value.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
 
 class TestUser(SupportAPITestCase):
 
@@ -73,18 +70,18 @@ class TestUser(SupportAPITestCase):
         response = self.client.post(
             '/api/sign-up/',
             data={
-                "username":"toto",
-                "password":"toto",
-                "password2":"toto",
-                "age":25,
-                "email":"toto@toto.fr",
-                "first_name":"toto",
-                "last_name":"toto",
+                "username": "toto",
+                "password": "toto",
+                "password2": "toto",
+                "age": 25,
+                "email": "toto@toto.fr",
+                "first_name": "toto",
+                "last_name": "toto",
                 "can_be_contacted": True,
                 "can_data_be_shared": True
             }
         )
-        self.assertTrue(response.status_code,201)
+        self.assertTrue(response.status_code, 201)
         expected = {
             "username": "toto",
             "password": "toto",
@@ -139,12 +136,12 @@ class TestUser(SupportAPITestCase):
         response = self.client.post(
             '/api/login/',
             data={
-                "username":"user1",
-                "password" : "user1"
+                "username": "user1",
+                "password": "user1"
             }
         )
-        self.assertIn('access',response.json())
-        self.assertIn('refresh',response.json())
+        self.assertIn('access', response.json())
+        self.assertIn('refresh', response.json())
 
     def support_api_authentication(self, username, password):
         response = self.client.post(
@@ -154,31 +151,25 @@ class TestUser(SupportAPITestCase):
                 "password": password
             }
         )
-
-        print("--------------------------------")
-        print(username)
-        print(password)
-        print(response)
-        print("--------------------------------")
         access = response.json()['access']
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {access}')
 
     def test_create_as_admin(self):
 
-        self.support_api_authentication("test_admin","test_admin")
+        self.support_api_authentication("test_admin", "test_admin")
 
         def check_user_existence(username, email):
             try:
-                User.objects.get(Q(username=username)|Q(email=email))
+                User.objects.get(Q(username=username) | Q(email=email))
                 return True
             except ObjectDoesNotExist:
                 return False
 
-        self.assertFalse(check_user_existence("user4","user4@support.fr"))
+        self.assertFalse(check_user_existence("user4", "user4@support.fr"))
 
         response = self.client.post(
             self.url_list,
-            data = {
+            data={
                 "username": "user4",
                 "password": "user4",
                 "password2": "user4",
@@ -190,7 +181,7 @@ class TestUser(SupportAPITestCase):
                 "can_data_be_shared": True
             }
         )
-        self.assertEqual(response.status_code,201)
+        self.assertEqual(response.status_code, 201)
         expected = {
             "username": "user4",
             "age": 25,
@@ -206,20 +197,20 @@ class TestUser(SupportAPITestCase):
 
     def test_create_as_user(self):
 
-        self.support_api_authentication("user1","user1")
+        self.support_api_authentication("user1", "user1")
 
         def check_user_existence(username, email):
             try:
-                User.objects.get(Q(username=username)|Q(email=email))
+                User.objects.get(Q(username=username) | Q(email=email))
                 return True
             except ObjectDoesNotExist:
                 return False
 
-        self.assertFalse(check_user_existence("user4","user4@support.fr"))
+        self.assertFalse(check_user_existence("user4", "user4@support.fr"))
 
         response = self.client.post(
             self.url_list,
-            data = {
+            data={
                 "username": "user4",
                 "password": "user4",
                 "password2": "user4",
@@ -231,7 +222,7 @@ class TestUser(SupportAPITestCase):
                 "can_data_be_shared": True
             }
         )
-        self.assertEqual(response.status_code,201)
+        self.assertEqual(response.status_code, 201)
         expected = {
             "username": "user4",
             "age": 25,
